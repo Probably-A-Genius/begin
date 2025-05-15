@@ -12,17 +12,17 @@
       font-family: 'Courier New', Courier, monospace;
       padding: 40px;
       line-height: 1.6;
-      margin: 0;
+      user-select: none;
     }
     h1, h2 {
       color: #00ff00;
       text-shadow: 0 0 5px #00ff00;
-      margin-bottom: 0.5em;
+      margin-bottom: 10px;
     }
     label, p {
       font-size: 1.2rem;
     }
-    input, button {
+    input[type=number], button {
       font-size: 1.2rem;
       padding: 8px 12px;
       margin: 10px 10px 10px 0;
@@ -30,56 +30,72 @@
       color: #00ff00;
       border: 1px solid #00ff00;
       border-radius: 5px;
-      cursor: pointer;
-      user-select: none;
     }
-    input:focus, button:hover {
+    input[type=number]:focus, button:hover, input[type=range]:focus {
       outline: none;
       box-shadow: 0 0 10px #00ff00;
     }
-    #chartWrapper {
+    #chartContainer {
       overflow-x: auto;
       border: 1px solid #00ff00;
       background-color: #111;
-      margin-top: 30px;
-      padding: 10px 0;
+      padding: 10px;
+      margin-top: 20px;
+      width: 100%;
       max-width: 100%;
-      height: 320px;
+      box-sizing: border-box;
     }
-    #progressChart {
-      display: block;
-      /* width and height will be set via JS for crispness */
+    canvas {
+      /* Make canvas width bigger for many points, height fixed */
+      height: 300px !important;
+      user-select: none;
     }
-    .stats-container p {
-      margin: 4px 0;
+    #sliderContainer {
+      margin-top: 15px;
+      user-select: none;
+    }
+    #showCountValue {
+      font-weight: bold;
+      margin-left: 8px;
     }
   </style>
 </head>
 <body>
   <h1>Hard Mode Progress Tracker</h1>
-  
   <label for="score">Enter Score:</label><br />
-  <input type="number" id="score" autocomplete="off" />
+  <input type="number" id="score" />
   <button onclick="addScore()">Add</button>
   <button onclick="resetData()">Reset</button>
   <button onclick="exportData()">Export</button>
 
   <h2>Stats</h2>
-  <div class="stats-container">
-    <p id="highest">Highest Score: </p>
-    <p id="average">Average Score: </p>
-    <p id="trend">Trend: </p>
-    <p id="averageChange">Average Change Per Run: </p>
+  <p id="highest">Highest Score: </p>
+  <p id="average">Average Score: </p>
+  <p id="trend">Trend: </p>
+  <p id="averageChange">Average Change Per Run: </p>
+
+  <div id="chartContainer">
+    <canvas id="progressChart" width="1200"></canvas>
   </div>
 
-  <div id="chartWrapper">
-    <canvas id="progressChart"></canvas>
+  <div id="sliderContainer">
+    <label for="showCount">Show last N runs:</label>
+    <input
+      type="range"
+      id="showCount"
+      min="10"
+      max="1000"
+      value="50"
+      step="1"
+      oninput="updateSliderLabel()"
+      onchange="updateChart()"
+    />
+    <span id="showCountValue">50</span>
   </div>
 
   <script>
     let scores = JSON.parse(localStorage.getItem('scores')) || [];
     let dates = JSON.parse(localStorage.getItem('dates')) || [];
-    let chart;
 
     function saveToLocalStorage() {
       localStorage.setItem('scores', JSON.stringify(scores));
@@ -99,7 +115,6 @@
       updateStats();
       updateChart();
       scoreInput.value = '';
-      scoreInput.focus();
     }
 
     function resetData() {
@@ -112,18 +127,13 @@
     }
 
     function exportData() {
-      if (scores.length === 0) {
-        alert("No data to export.");
-        return;
-      }
-      const data = scores.map((s, i) => `${dates[i]}, ${s}`).join('\n');
+      const data = scores.map((s, i) => `${dates[i]},${s}`).join('\n');
       const blob = new Blob([data], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'hard_mode_progress.csv';
       a.click();
-      URL.revokeObjectURL(url);
     }
 
     function updateStats() {
@@ -157,67 +167,76 @@
       document.getElementById('averageChange').textContent = 'Average Change Per Run: ' + avgChange;
     }
 
+    let chart;
     function updateChart() {
+      const showCountInput = document.getElementById('showCount');
+      let showCount = parseInt(showCountInput.value);
+      if (scores.length < showCount) showCount = scores.length;
+
+      const slicedScores = scores.slice(-showCount);
+      const slicedDates = dates.slice(-showCount);
+
+      // Adjust canvas width dynamically to 20px per data point, min 600px max 2400px
+      const newWidth = Math.min(Math.max(showCount * 20, 600), 2400);
       const canvas = document.getElementById('progressChart');
+      canvas.width = newWidth;
+
       const ctx = canvas.getContext('2d');
-
-      // Device Pixel Ratio for sharpness
-      const dpr = window.devicePixelRatio || 1;
-      const width = 1200; // logical width in CSS pixels
-      const height = 300; // logical height in CSS pixels
-
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      canvas.style.width = width + 'px';
-      canvas.style.height = height + 'px';
-
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
       if (chart) chart.destroy();
       chart = new Chart(ctx, {
         type: 'line',
         data: {
-          labels: dates,
+          labels: slicedDates,
           datasets: [{
             label: 'Score Over Time',
-            data: scores,
+            data: slicedScores,
             borderColor: '#00ff00',
             backgroundColor: 'transparent',
             tension: 0.2,
             pointRadius: 3,
             pointHoverRadius: 6,
+            borderWidth: 2,
           }]
         },
         options: {
           responsive: false,
+          maintainAspectRatio: false,
           scales: {
             x: {
               ticks: { color: '#00ff00', maxRotation: 45, minRotation: 45 },
-              grid: { color: '#004400' }
+              grid: { color: '#003300' }
             },
             y: {
               ticks: { color: '#00ff00' },
+              grid: { color: '#003300' },
               beginAtZero: true,
-              grid: { color: '#004400' }
+              suggestedMax: Math.max(...slicedScores) + 10
             }
           },
           plugins: {
-            legend: { labels: { color: '#00ff00' } },
+            legend: { labels: { color: '#00ff00', font: { size: 14 } } },
             tooltip: {
               enabled: true,
               backgroundColor: '#002200',
               titleColor: '#00ff00',
-              bodyColor: '#00ff00'
+              bodyColor: '#00ff00',
+              cornerRadius: 5,
+              displayColors: false,
             }
           }
         }
       });
     }
 
-    window.onload = () => {
+    function updateSliderLabel() {
+      const val = document.getElementById('showCount').value;
+      document.getElementById('showCountValue').textContent = val;
+    }
+
+    window.onload = function () {
+      updateSliderLabel();
       updateStats();
       updateChart();
-      document.getElementById('score').focus();
     };
   </script>
 </body>
