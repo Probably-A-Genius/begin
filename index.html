@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hard Mode Progress Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background-color: #000;
+      color: #00ff00;
+      font-family: 'Courier New', Courier, monospace;
+      padding: 40px;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      color: #00ff00;
+      text-shadow: 0 0 5px #00ff00;
+    }
+    label, p {
+      font-size: 1.2rem;
+    }
+    input, button {
+      font-size: 1.2rem;
+      padding: 8px 12px;
+      margin: 10px 0;
+      background-color: #000;
+      color: #00ff00;
+      border: 1px solid #00ff00;
+      border-radius: 5px;
+    }
+    input:focus, button:hover {
+      outline: none;
+      box-shadow: 0 0 10px #00ff00;
+    }
+    canvas {
+      background-color: #111;
+      border: 1px solid #00ff00;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hard Mode Progress Tracker</h1>
+  <label for="score">Enter Score:</label><br>
+  <input type="number" id="score" />
+  <button onclick="addScore()">Add</button>
+
+  <h2>Stats</h2>
+  <p id="highest">Highest Score: </p>
+  <p id="average">Average Score: </p>
+  <p id="trend">Trend: </p>
+  <p id="averageChange">Average Change Per Run: </p>
+
+  <canvas id="progressChart" width="600" height="300"></canvas>
+
+  <script>
+    const scores = [];
+    const dates = [];
+
+    function addScore() {
+      const scoreInput = document.getElementById('score');
+      const score = parseInt(scoreInput.value);
+      if (isNaN(score)) return;
+
+      const now = new Date();
+      scores.push(score);
+      dates.push(now.toLocaleString());
+
+      updateStats();
+      updateChart();
+      scoreInput.value = '';
+    }
+
+    function updateStats() {
+      const highest = Math.max(...scores);
+      const average = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
+      const trend = scores.length > 1 ? (scores[scores.length - 1] > scores[0] ? 'Increasing' : (scores[scores.length - 1] < scores[0] ? 'Decreasing' : 'Stable')) : 'N/A';
+      let avgChange = 'N/A';
+      if (scores.length > 1) {
+        let sum = 0;
+        for (let i = 1; i < scores.length; i++) {
+          sum += scores[i] - scores[i - 1];
+        }
+        avgChange = (sum / (scores.length - 1)).toFixed(2);
+      }
+
+      document.getElementById('highest').textContent = 'Highest Score: ' + highest;
+      document.getElementById('average').textContent = 'Average Score: ' + average;
+      document.getElementById('trend').textContent = 'Trend: ' + trend;
+      document.getElementById('averageChange').textContent = 'Average Change Per Run: ' + avgChange;
+    }
+
+    let chart;
+    function updateChart() {
+      const ctx = document.getElementById('progressChart').getContext('2d');
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'Score Over Time',
+            data: scores,
+            borderColor: '#00ff00',
+            backgroundColor: 'transparent',
+            tension: 0.2
+          }]
+        },
+        options: {
+          scales: {
+            x: { ticks: { color: '#00ff00' } },
+            y: { ticks: { color: '#00ff00' } }
+          },
+          plugins: {
+            legend: { labels: { color: '#00ff00' } }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
