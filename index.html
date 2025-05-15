@@ -33,10 +33,18 @@
       outline: none;
       box-shadow: 0 0 10px #00ff00;
     }
-    canvas {
-      background-color: #111;
+    /* Scroll container for the chart */
+    #chart-container {
+      width: 100%;
+      max-width: 600px;
+      overflow-x: auto;
       border: 1px solid #00ff00;
       margin-top: 20px;
+    }
+    canvas {
+      background-color: #111;
+      min-width: 800px; /* wider than container to enable horizontal scroll */
+      height: 300px !important;
     }
   </style>
 </head>
@@ -54,7 +62,9 @@
   <p id="trend">Trend: </p>
   <p id="averageChange">Average Change Per Run: </p>
 
-  <canvas id="progressChart" width="600" height="300"></canvas>
+  <div id="chart-container">
+    <canvas id="progressChart"></canvas>
+  </div>
 
   <script>
     let scores = JSON.parse(localStorage.getItem('scores')) || [];
