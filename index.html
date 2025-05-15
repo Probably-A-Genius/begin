@@ -10,154 +10,141 @@
       background-color: #000;
       color: #00ff00;
       font-family: 'Courier New', Courier, monospace;
-      padding: 40px;
+      padding: 30px;
       line-height: 1.6;
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
     }
     h1, h2 {
       color: #00ff00;
-      text-shadow: 0 0 5px #00ff00;
-      margin-bottom: 0.5em;
+      text-shadow: 0 0 8px #00ff00;
+      margin-bottom: 10px;
     }
     label {
-      font-size: 1.4rem;
-      margin-bottom: 8px;
-      display: block;
+      font-size: 1.2rem;
     }
     input[type=number] {
-      font-size: 1.8rem;
-      padding: 10px 15px;
-      width: 150px;
-      border: 1.5px solid #00ff00;
-      border-radius: 6px;
+      font-size: 1.2rem;
+      padding: 8px 12px;
+      margin: 10px 10px 10px 0;
+      width: 120px;
       background-color: #000;
       color: #00ff00;
-      margin-right: 12px;
-      text-align: center;
-      box-shadow: 0 0 8px #00ff00;
-      transition: box-shadow 0.3s ease;
-    }
-    input[type=number]:focus {
-      outline: none;
-      box-shadow: 0 0 15px #00ff00;
+      border: 1px solid #00ff00;
+      border-radius: 5px;
     }
     button {
-      font-size: 1.3rem;
-      padding: 10px 18px;
-      margin-right: 10px;
+      font-size: 1.2rem;
+      padding: 8px 14px;
+      margin: 10px 5px 10px 0;
       background-color: #000;
       color: #00ff00;
-      border: 1.5px solid #00ff00;
-      border-radius: 6px;
+      border: 1px solid #00ff00;
+      border-radius: 5px;
       cursor: pointer;
-      transition: box-shadow 0.3s ease;
+      transition: box-shadow 0.2s ease;
     }
-    button:hover {
+    button:hover, input[type=number]:focus {
+      outline: none;
       box-shadow: 0 0 12px #00ff00;
     }
-
-    #scoresList {
-      margin-top: 25px;
-      max-height: 160px;
-      width: 350px;
-      background-color: #111;
-      border: 1.5px solid #00ff00;
-      border-radius: 8px;
-      padding: 12px;
+    #scoresContainer {
+      max-height: 180px;
       overflow-y: auto;
-      font-size: 1.1rem;
+      border: 1px solid #00ff00;
+      padding: 10px;
+      margin-top: 15px;
+      background-color: #111;
+      font-size: 1rem;
       line-height: 1.4;
-      box-shadow: 0 0 10px #00ff00 inset;
-    }
-
-    #scoresList p {
-      margin: 4px 0;
       white-space: nowrap;
     }
-
-    #stats {
-      margin-top: 35px;
-      width: 350px;
-      font-size: 1.3rem;
-      line-height: 1.5;
+    #scoresContainer div {
+      margin-bottom: 6px;
     }
-
     canvas {
       background-color: #111;
-      border: 1.5px solid #00ff00;
+      border: 1px solid #00ff00;
       margin-top: 30px;
-      border-radius: 8px;
-      box-shadow: 0 0 20px #00ff00;
       max-width: 100%;
+      height: 300px !important;
+    }
+    #stats p {
+      font-size: 1.1rem;
+      margin: 6px 0;
+      text-shadow: 0 0 5px #00ff00;
     }
   </style>
 </head>
 <body>
   <h1>Hard Mode Progress Tracker</h1>
-  <label for="score">Enter Score:</label>
-  <div>
-    <input type="number" id="score" placeholder="e.g. 120" />
-    <button id="addBtn">Add</button>
-    <button id="resetBtn">Reset</button>
-    <button id="exportBtn">Export</button>
-  </div>
+  <label for="score">Enter Score:</label><br />
+  <input type="number" id="score" placeholder="Your score" />
+  <button id="addBtn">Add</button>
+  <button id="resetBtn">Reset</button>
+  <button id="exportBtn">Export</button>
 
-  <div id="scoresList"></div>
+  <div id="scoresContainer" aria-label="List of previous scores and timestamps" role="list"></div>
 
+  <h2>Stats</h2>
   <div id="stats">
-    <h2>Stats</h2>
     <p id="highest">Highest Score: </p>
     <p id="average">Average Score: </p>
     <p id="trend">Trend: </p>
     <p id="averageChange">Average Change Per Run: </p>
   </div>
 
-  <canvas id="progressChart" width="600" height="300"></canvas>
+  <canvas id="progressChart"></canvas>
 
   <script>
+    // Load data or initialize empty
     let scores = JSON.parse(localStorage.getItem('scores')) || [];
     let dates = JSON.parse(localStorage.getItem('dates')) || [];
-    let chart;
 
-    function saveToLocalStorage() {
+    // Save data to localStorage
+    function saveData() {
       localStorage.setItem('scores', JSON.stringify(scores));
       localStorage.setItem('dates', JSON.stringify(dates));
     }
 
+    // Add a new score
     function addScore() {
-      const scoreInput = document.getElementById('score');
-      const score = parseInt(scoreInput.value);
-      if (isNaN(score)) return;
-
+      const input = document.getElementById('score');
+      const value = parseInt(input.value);
+      if (isNaN(value)) {
+        alert('Please enter a valid number');
+        return;
+      }
       const now = new Date();
-      scores.push(score);
+      scores.push(value);
       dates.push(now.toLocaleString());
-
-      saveToLocalStorage();
+      saveData();
+      input.value = '';
+      updateScoresList();
       updateStats();
       updateChart();
-      updateScoresList();
-      scoreInput.value = '';
-      scoreInput.focus();
     }
 
+    // Reset all data
     function resetData() {
       if (!confirm('Are you sure you want to reset all data?')) return;
       scores = [];
       dates = [];
-      saveToLocalStorage();
+      saveData();
+      updateScoresList();
       updateStats();
       updateChart();
-      updateScoresList();
     }
 
+    // Export data as CSV
     function exportData() {
-      const data = scores.map((s, i) => `${dates[i]}, ${s}`).join('\n');
-      const blob = new Blob([data], { type: 'text/csv' });
+      if (scores.length === 0) {
+        alert('No data to export.');
+        return;
+      }
+      let csv = 'Date,Score\n';
+      for (let i = 0; i < scores.length; i++) {
+        csv += `"${dates[i]}","${scores[i]}"\n`;
+      }
+      const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -166,52 +153,72 @@
       URL.revokeObjectURL(url);
     }
 
-    function updateStats() {
+    // Update the scrollable list of scores
+    function updateScoresList() {
+      const container = document.getElementById('scoresContainer');
+      container.innerHTML = '';
       if (scores.length === 0) {
-        document.getElementById('highest').textContent = 'Highest Score: ';
-        document.getElementById('average').textContent = 'Average Score: ';
-        document.getElementById('trend').textContent = 'Trend: ';
-        document.getElementById('averageChange').textContent = 'Average Change Per Run: ';
+        container.textContent = 'No scores recorded yet.';
+        return;
+      }
+      for (let i = scores.length - 1; i >= 0; i--) {
+        const div = document.createElement('div');
+        div.textContent = `${dates[i]} — ${scores[i]}`;
+        container.appendChild(div);
+      }
+      // Auto scroll to top so newest are visible
+      container.scrollTop = 0;
+    }
+
+    // Update stats display
+    function updateStats() {
+      const highestP = document.getElementById('highest');
+      const averageP = document.getElementById('average');
+      const trendP = document.getElementById('trend');
+      const avgChangeP = document.getElementById('averageChange');
+
+      if (scores.length === 0) {
+        highestP.textContent = 'Highest Score: N/A';
+        averageP.textContent = 'Average Score: N/A';
+        trendP.textContent = 'Trend: N/A';
+        avgChangeP.textContent = 'Average Change Per Run: N/A';
         return;
       }
 
       const highest = Math.max(...scores);
       const average = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
-      const trend = scores.length > 1
-        ? (scores[scores.length - 1] > scores[0] ? 'Increasing'
-          : (scores[scores.length - 1] < scores[0] ? 'Decreasing' : 'Stable'))
-        : 'N/A';
+
+      let trend = 'Stable';
+      if (scores.length > 1) {
+        if (scores[scores.length - 1] > scores[0]) trend = 'Increasing';
+        else if (scores[scores.length - 1] < scores[0]) trend = 'Decreasing';
+      }
 
       let avgChange = 'N/A';
       if (scores.length > 1) {
-        let sum = 0;
+        let sumChanges = 0;
         for (let i = 1; i < scores.length; i++) {
-          sum += scores[i] - scores[i - 1];
+          sumChanges += scores[i] - scores[i - 1];
         }
-        avgChange = (sum / (scores.length - 1)).toFixed(2);
+        avgChange = (sumChanges / (scores.length - 1)).toFixed(2);
       }
 
-      document.getElementById('highest').textContent = 'Highest Score: ' + highest;
-      document.getElementById('average').textContent = 'Average Score: ' + average;
-      document.getElementById('trend').textContent = 'Trend: ' + trend;
-      document.getElementById('averageChange').textContent = 'Average Change Per Run: ' + avgChange;
+      highestP.textContent = `Highest Score: ${highest}`;
+      averageP.textContent = `Average Score: ${average}`;
+      trendP.textContent = `Trend: ${trend}`;
+      avgChangeP.textContent = `Average Change Per Run: ${avgChange}`;
     }
 
-    function updateScoresList() {
-      const container = document.getElementById('scoresList');
-      container.innerHTML = '';
-      for (let i = 0; i < scores.length; i++) {
-        const p = document.createElement('p');
-        p.textContent = `${i + 1}. ${dates[i]} — ${scores[i]}`;
-        container.appendChild(p);
-      }
-      container.scrollTop = container.scrollHeight;
-    }
+    // Chart.js chart instance
+    let chartInstance = null;
 
+    // Update the line chart
     function updateChart() {
       const ctx = document.getElementById('progressChart').getContext('2d');
-      if (chart) chart.destroy();
-      chart = new Chart(ctx, {
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+      chartInstance = new Chart(ctx, {
         type: 'line',
         data: {
           labels: dates,
@@ -223,34 +230,47 @@
             tension: 0.2,
             pointRadius: 4,
             pointHoverRadius: 6,
-            borderWidth: 2,
-          }]
+          }],
         },
         options: {
           responsive: true,
           scales: {
             x: {
-              ticks: { color: '#00ff00', maxRotation: 45, minRotation: 45 },
-              grid: { color: '#004400' }
+              ticks: { color: '#00ff00', maxRotation: 90, minRotation: 45 },
+              grid: { color: '#003300' },
             },
             y: {
-              beginAtZero: true,
               ticks: { color: '#00ff00' },
-              grid: { color: '#004400' }
-            }
+              grid: { color: '#003300' },
+              beginAtZero: true,
+            },
           },
           plugins: {
-            legend: { labels: { color: '#00ff00' } }
+            legend: { labels: { color: '#00ff00' } },
+            tooltip: { enabled: true },
           },
-          interaction: {
-            mode: 'nearest',
-            intersect: false
-          }
-        }
+        },
       });
     }
 
-    // Attach event listeners only after DOM is loaded
-    window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('addBtn').addEventListener('click', addScore);
-      document.getElementById('resetBtn').addEventListener
+    // Event listeners
+    document.getElementById('addBtn').addEventListener('click', addScore);
+    document.getElementById('resetBtn').addEventListener('click', resetData);
+    document.getElementById('exportBtn').addEventListener('click', exportData);
+
+    // Add score on Enter key press
+    document.getElementById('score').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        addScore();
+      }
+    });
+
+    // Initialize on load
+    window.onload = () => {
+      updateScoresList();
+      updateStats();
+      updateChart();
+    };
+  </script>
+</body>
+</html>
