@@ -101,9 +101,9 @@
   <label for="score">Enter Score:</label>
   <div>
     <input type="number" id="score" placeholder="e.g. 120" />
-    <button onclick="addScore()">Add</button>
-    <button onclick="resetData()">Reset</button>
-    <button onclick="exportData()">Export</button>
+    <button id="addBtn">Add</button>
+    <button id="resetBtn">Reset</button>
+    <button id="exportBtn">Export</button>
   </div>
 
   <div id="scoresList"></div>
@@ -121,6 +121,7 @@
   <script>
     let scores = JSON.parse(localStorage.getItem('scores')) || [];
     let dates = JSON.parse(localStorage.getItem('dates')) || [];
+    let chart;
 
     function saveToLocalStorage() {
       localStorage.setItem('scores', JSON.stringify(scores));
@@ -134,4 +135,122 @@
 
       const now = new Date();
       scores.push(score);
-      dates.push(now
+      dates.push(now.toLocaleString());
+
+      saveToLocalStorage();
+      updateStats();
+      updateChart();
+      updateScoresList();
+      scoreInput.value = '';
+      scoreInput.focus();
+    }
+
+    function resetData() {
+      if (!confirm('Are you sure you want to reset all data?')) return;
+      scores = [];
+      dates = [];
+      saveToLocalStorage();
+      updateStats();
+      updateChart();
+      updateScoresList();
+    }
+
+    function exportData() {
+      const data = scores.map((s, i) => `${dates[i]}, ${s}`).join('\n');
+      const blob = new Blob([data], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'hard_mode_progress.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function updateStats() {
+      if (scores.length === 0) {
+        document.getElementById('highest').textContent = 'Highest Score: ';
+        document.getElementById('average').textContent = 'Average Score: ';
+        document.getElementById('trend').textContent = 'Trend: ';
+        document.getElementById('averageChange').textContent = 'Average Change Per Run: ';
+        return;
+      }
+
+      const highest = Math.max(...scores);
+      const average = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
+      const trend = scores.length > 1
+        ? (scores[scores.length - 1] > scores[0] ? 'Increasing'
+          : (scores[scores.length - 1] < scores[0] ? 'Decreasing' : 'Stable'))
+        : 'N/A';
+
+      let avgChange = 'N/A';
+      if (scores.length > 1) {
+        let sum = 0;
+        for (let i = 1; i < scores.length; i++) {
+          sum += scores[i] - scores[i - 1];
+        }
+        avgChange = (sum / (scores.length - 1)).toFixed(2);
+      }
+
+      document.getElementById('highest').textContent = 'Highest Score: ' + highest;
+      document.getElementById('average').textContent = 'Average Score: ' + average;
+      document.getElementById('trend').textContent = 'Trend: ' + trend;
+      document.getElementById('averageChange').textContent = 'Average Change Per Run: ' + avgChange;
+    }
+
+    function updateScoresList() {
+      const container = document.getElementById('scoresList');
+      container.innerHTML = '';
+      for (let i = 0; i < scores.length; i++) {
+        const p = document.createElement('p');
+        p.textContent = `${i + 1}. ${dates[i]} — ${scores[i]}`;
+        container.appendChild(p);
+      }
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function updateChart() {
+      const ctx = document.getElementById('progressChart').getContext('2d');
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'Score Over Time',
+            data: scores,
+            borderColor: '#00ff00',
+            backgroundColor: 'transparent',
+            tension: 0.2,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderWidth: 2,
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              ticks: { color: '#00ff00', maxRotation: 45, minRotation: 45 },
+              grid: { color: '#004400' }
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { color: '#00ff00' },
+              grid: { color: '#004400' }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: '#00ff00' } }
+          },
+          interaction: {
+            mode: 'nearest',
+            intersect: false
+          }
+        }
+      });
+    }
+
+    // Attach event listeners only after DOM is loaded
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('addBtn').addEventListener('click', addScore);
+      document.getElementById('resetBtn').addEventListener
