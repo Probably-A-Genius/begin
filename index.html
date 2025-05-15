@@ -23,7 +23,7 @@
     input, button {
       font-size: 1.2rem;
       padding: 8px 12px;
-      margin: 10px 0;
+      margin: 10px 10px 10px 0;
       background-color: #000;
       color: #00ff00;
       border: 1px solid #00ff00;
@@ -45,6 +45,8 @@
   <label for="score">Enter Score:</label><br>
   <input type="number" id="score" />
   <button onclick="addScore()">Add</button>
+  <button onclick="resetData()">Reset</button>
+  <button onclick="exportData()">Export</button>
 
   <h2>Stats</h2>
   <p id="highest">Highest Score: </p>
@@ -55,8 +57,13 @@
   <canvas id="progressChart" width="600" height="300"></canvas>
 
   <script>
-    const scores = [];
-    const dates = [];
+    let scores = JSON.parse(localStorage.getItem('scores')) || [];
+    let dates = JSON.parse(localStorage.getItem('dates')) || [];
+
+    function saveToLocalStorage() {
+      localStorage.setItem('scores', JSON.stringify(scores));
+      localStorage.setItem('dates', JSON.stringify(dates));
+    }
 
     function addScore() {
       const scoreInput = document.getElementById('score');
@@ -67,15 +74,47 @@
       scores.push(score);
       dates.push(now.toLocaleString());
 
+      saveToLocalStorage();
       updateStats();
       updateChart();
       scoreInput.value = '';
     }
 
+    function resetData() {
+      if (!confirm('Are you sure you want to reset all data?')) return;
+      scores = [];
+      dates = [];
+      saveToLocalStorage();
+      updateStats();
+      updateChart();
+    }
+
+    function exportData() {
+      const data = scores.map((s, i) => `${dates[i]}, ${s}`).join('\n');
+      const blob = new Blob([data], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'hard_mode_progress.csv';
+      a.click();
+    }
+
     function updateStats() {
+      if (scores.length === 0) {
+        document.getElementById('highest').textContent = 'Highest Score: ';
+        document.getElementById('average').textContent = 'Average Score: ';
+        document.getElementById('trend').textContent = 'Trend: ';
+        document.getElementById('averageChange').textContent = 'Average Change Per Run: ';
+        return;
+      }
+
       const highest = Math.max(...scores);
       const average = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
-      const trend = scores.length > 1 ? (scores[scores.length - 1] > scores[0] ? 'Increasing' : (scores[scores.length - 1] < scores[0] ? 'Decreasing' : 'Stable')) : 'N/A';
+      const trend = scores.length > 1
+        ? (scores[scores.length - 1] > scores[0] ? 'Increasing'
+          : (scores[scores.length - 1] < scores[0] ? 'Decreasing' : 'Stable'))
+        : 'N/A';
+
       let avgChange = 'N/A';
       if (scores.length > 1) {
         let sum = 0;
@@ -118,6 +157,13 @@
         }
       });
     }
+
+    window.onload = function () {
+      if (scores.length > 0) {
+        updateStats();
+        updateChart();
+      }
+    };
   </script>
 </body>
 </html>
