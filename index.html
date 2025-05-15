@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hard Mode Progress Tracker</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -12,10 +12,12 @@
       font-family: 'Courier New', Courier, monospace;
       padding: 40px;
       line-height: 1.6;
+      margin: 0;
     }
     h1, h2 {
       color: #00ff00;
       text-shadow: 0 0 5px #00ff00;
+      margin-bottom: 0.5em;
     }
     label, p {
       font-size: 1.2rem;
@@ -28,42 +30,47 @@
       color: #00ff00;
       border: 1px solid #00ff00;
       border-radius: 5px;
+      cursor: pointer;
+      user-select: none;
     }
     input:focus, button:hover {
       outline: none;
       box-shadow: 0 0 10px #00ff00;
     }
-    /* Scroll container for chart */
     #chartWrapper {
       overflow-x: auto;
       border: 1px solid #00ff00;
       background-color: #111;
       margin-top: 30px;
       padding: 10px 0;
-      /* limit height so only horizontal scroll appears */
+      max-width: 100%;
       height: 320px;
     }
-    canvas {
+    #progressChart {
       display: block;
-      height: 300px !important;
-      /* Fixed wide width for horizontal scrolling */
-      width: 1200px !important;
+      /* width and height will be set via JS for crispness */
+    }
+    .stats-container p {
+      margin: 4px 0;
     }
   </style>
 </head>
 <body>
   <h1>Hard Mode Progress Tracker</h1>
-  <label for="score">Enter Score:</label><br>
-  <input type="number" id="score" />
+  
+  <label for="score">Enter Score:</label><br />
+  <input type="number" id="score" autocomplete="off" />
   <button onclick="addScore()">Add</button>
   <button onclick="resetData()">Reset</button>
   <button onclick="exportData()">Export</button>
 
   <h2>Stats</h2>
-  <p id="highest">Highest Score: </p>
-  <p id="average">Average Score: </p>
-  <p id="trend">Trend: </p>
-  <p id="averageChange">Average Change Per Run: </p>
+  <div class="stats-container">
+    <p id="highest">Highest Score: </p>
+    <p id="average">Average Score: </p>
+    <p id="trend">Trend: </p>
+    <p id="averageChange">Average Change Per Run: </p>
+  </div>
 
   <div id="chartWrapper">
     <canvas id="progressChart"></canvas>
@@ -72,6 +79,7 @@
   <script>
     let scores = JSON.parse(localStorage.getItem('scores')) || [];
     let dates = JSON.parse(localStorage.getItem('dates')) || [];
+    let chart;
 
     function saveToLocalStorage() {
       localStorage.setItem('scores', JSON.stringify(scores));
@@ -91,6 +99,7 @@
       updateStats();
       updateChart();
       scoreInput.value = '';
+      scoreInput.focus();
     }
 
     function resetData() {
@@ -103,6 +112,10 @@
     }
 
     function exportData() {
+      if (scores.length === 0) {
+        alert("No data to export.");
+        return;
+      }
       const data = scores.map((s, i) => `${dates[i]}, ${s}`).join('\n');
       const blob = new Blob([data], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
@@ -110,6 +123,7 @@
       a.href = url;
       a.download = 'hard_mode_progress.csv';
       a.click();
+      URL.revokeObjectURL(url);
     }
 
     function updateStats() {
@@ -143,9 +157,22 @@
       document.getElementById('averageChange').textContent = 'Average Change Per Run: ' + avgChange;
     }
 
-    let chart;
     function updateChart() {
-      const ctx = document.getElementById('progressChart').getContext('2d');
+      const canvas = document.getElementById('progressChart');
+      const ctx = canvas.getContext('2d');
+
+      // Device Pixel Ratio for sharpness
+      const dpr = window.devicePixelRatio || 1;
+      const width = 1200; // logical width in CSS pixels
+      const height = 300; // logical height in CSS pixels
+
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
       if (chart) chart.destroy();
       chart = new Chart(ctx, {
         type: 'line',
@@ -156,26 +183,41 @@
             data: scores,
             borderColor: '#00ff00',
             backgroundColor: 'transparent',
-            tension: 0.2
+            tension: 0.2,
+            pointRadius: 3,
+            pointHoverRadius: 6,
           }]
         },
         options: {
+          responsive: false,
           scales: {
-            x: { ticks: { color: '#00ff00' } },
-            y: { ticks: { color: '#00ff00' }, beginAtZero: true }
+            x: {
+              ticks: { color: '#00ff00', maxRotation: 45, minRotation: 45 },
+              grid: { color: '#004400' }
+            },
+            y: {
+              ticks: { color: '#00ff00' },
+              beginAtZero: true,
+              grid: { color: '#004400' }
+            }
           },
           plugins: {
-            legend: { labels: { color: '#00ff00' } }
+            legend: { labels: { color: '#00ff00' } },
+            tooltip: {
+              enabled: true,
+              backgroundColor: '#002200',
+              titleColor: '#00ff00',
+              bodyColor: '#00ff00'
+            }
           }
         }
       });
     }
 
-    window.onload = function () {
-      if (scores.length > 0) {
-        updateStats();
-        updateChart();
-      }
+    window.onload = () => {
+      updateStats();
+      updateChart();
+      document.getElementById('score').focus();
     };
   </script>
 </body>
